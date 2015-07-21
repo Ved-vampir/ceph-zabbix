@@ -24,7 +24,7 @@ stale=0
 remapped=0
 
 # Get data
-$ceph_bin pg dump -f json > /tmp/pgdump
+$ceph_bin pg dump -f json > /tmp/pgdump 2>/dev/null
 pginfo=$(echo -n "  pgmap $($ceph_bin pg stat)" | sed -n "s/.*pgmap/pgmap/p")
 pgtotal=$(echo $pginfo | cut -d':' -f2 | sed 's/[^0-9]//g')
 pgstats=$(echo $pginfo | cut -d':' -f3 | cut -d';' -f1| sed 's/ /\\ /g')
@@ -217,18 +217,18 @@ function ceph_pool_obj_count()
 
 function ceph_apply_latency()
 {
-  echo $(python help.py apply_latency_ms)
+  echo $(python /opt/help.py apply_latency_ms)
 }
 
 
 function ceph_commit_latency()
 {
-  echo $(python help.py commit_latency_ms)
+  echo $(python /opt/help.py commit_latency_ms)
 }
 
 function ceph_osd_kb_used()
 {
-  echo $(python help.py kb_used)
+  echo $(python /opt/help.py kb_used)
 }
 
 

@@ -1,7 +1,8 @@
 import sys
 import json
 
-data = json.load(open("/tmp/pgdump"))
+with open("/tmp/pgdump", "r") as f:
+    data = json.load(f)
 osd_stats = data["osd_stats"]
 key = sys.argv[1]
 res = ""
