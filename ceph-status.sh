@@ -1,7 +1,7 @@
 #!/bin/bash
 
-ceph_bin="/usr/bin/ceph"
-rados_bin="/usr/bin/rados"
+ceph_bin="sudo /usr/bin/ceph"
+rados_bin="sudo /usr/bin/rados"
 
 # Initialising variables
 # See: http://ceph.com/docs/master/rados/operations/pg-states/
@@ -24,6 +24,7 @@ stale=0
 remapped=0
 
 # Get data
+$ceph_bin pg dump -f json > /tmp/pgdump
 pginfo=$(echo -n "  pgmap $($ceph_bin pg stat)" | sed -n "s/.*pgmap/pgmap/p")
 pgtotal=$(echo $pginfo | cut -d':' -f2 | sed 's/[^0-9]//g')
 pgstats=$(echo $pginfo | cut -d':' -f3 | cut -d';' -f1| sed 's/ /\\ /g')
@@ -38,6 +39,10 @@ if [[ "$pgunfound" == "" ]]
 then
   pgunfound=0
 fi
+
+osd_pool=$(ceph osd pool stats -f json)
+
+
 
 # write kbps B/s
 rdbps=$(echo $pginfo | sed -n '/pgmap/s/.* \([0-9]* .\?\)B\/s rd.*/\1/p' | sed -e "s/K/*1000/ig;s/M/*1000*1000/i;s/G/*1000*1000*1000/i;s/E/*1000*1000*1000*1000/i" | bc)
@@ -183,6 +188,17 @@ function ceph_osd_in_percent()
 
 }
 
+function ceph_mon_get_quorum()
+{
+  QUORUM=$($ceph_bin status| awk '{if ($1 == "monmap") print split($11, a, ",")}')
+  if [[ "$QUORUM" != "" ]]
+  then
+    echo $QUORUM
+  else
+    echo 0
+  fi
+}
+
 function ceph_mon_get_active()
 {
   ACTIVE=$($ceph_bin status|sed -n '/monmap/s/.* \([0-9]*\) mons.*/\1/p')
@@ -193,6 +209,28 @@ function ceph_mon_get_active()
     echo 0
   fi
 }
+
+function ceph_pool_obj_count()
+{
+  echo $($ceph_bin df | sed '1,/NAME/d' | awk '{print $1 ":" $6}')
+}
+
+function ceph_apply_latency()
+{
+  echo $(python help.py apply_latency_ms)
+}
+
+
+function ceph_commit_latency()
+{
+  echo $(python help.py commit_latency_ms)
+}
+
+function ceph_osd_kb_used()
+{
+  echo $(python help.py kb_used)
+}
+
 
 # Return the value
 case $1 in
@@ -224,6 +262,12 @@ case $1 in
   ;;
   mon)
     ceph_mon_get_active
+  ;;
+  mon_quorum)
+    ceph_mon_get_quorum
+  ;;
+  obj_count)
+    ceph_pool_obj_count
   ;;
   up)
     ceph_osd_up_percent
@@ -296,5 +340,14 @@ case $1 in
   ;;
   rdbps)
     echo $rdbps
+  ;;
+  osd_kbused)
+    ceph_osd_kb_used
+  ;;
+  commit)
+    ceph_commit_latency
+  ;;
+  apply)
+    ceph_apply_latency
   ;;
 esac
