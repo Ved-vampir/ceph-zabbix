@@ -5,23 +5,22 @@ Zabbix plugin for Ceph monitoring
 
 Installation
 ===========
-Edit the *zabbix_agent_ceph_plugin.conf* to set the path to the bash script (default is /opt/ceph-status.sh) then add it to your zabbix agent config
 
-Copy ceph-status.sh and help.py to folder, which is in conf. Check, that ceph-status.sh has a execute permition
+On every monitoring node follow steps:
 
-Add the xml template and link them to your node.
+1. Copy zabbix_agent_ceph_plugin.conf to /etc/zabbix/zabbix_agentd.d folder.
 
-Link the ceph templates to your hosts
+2. Copy ceph-status.sh to /opt folder (or another, but in this case don't forget to change path in conf file). Make sure, that zabbix user has an execute rights on this script.
 
-Add user zabbix to sudoers for ceph and rados
+3. Set read right on ceph keyring file for zabbix user (e.g. like this: sudo setfacl -m "u:zabbix:r" /etc/ceph/ceph.client.admin.keyring)
 
-zabbix ALL = NOPASSWD: /usr/bin/ceph
+4. Restart zabbix agent service (/etc/init.d/zabbix-agentd restart)
 
-zabbix ALL = NOPASSWD: /usr/bin/rados
+5. Make sure, that zabbix agent was started successfully (e.g. via ps aux | grep zabbix) and that zabbix user can call ceph commands (try to run sudo -u zabbix ceph -s)
 
-Check that bc is installed
+After this go to zabbix UI and add templates for metrics. Link them to nodes.
 
-Restart zabbix agent on every node, where conf was changed
+All metrics will work this global Ceph commands, so, they can be used on any Ceph node.
 
 What's next
 ==============

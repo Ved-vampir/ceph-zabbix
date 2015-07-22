@@ -1,7 +1,7 @@
 #!/bin/bash
 
-ceph_bin="sudo /usr/bin/ceph"
-rados_bin="sudo /usr/bin/rados"
+ceph_bin="/usr/bin/ceph"
+rados_bin="/usr/bin/rados"
 
 # Initialising variables
 # See: http://ceph.com/docs/master/rados/operations/pg-states/
@@ -214,28 +214,30 @@ function ceph_pool_obj_count()
   echo $($ceph_bin df | sed '1,/NAME/d' | awk '{print $1 ":" $6}')
 }
 
-function ceph_apply_latency()
+function ceph_pg_dump_stat()
 {
-  $ceph_bin pg dump -f json > /tmp/pgdump 2>/dev/null
-  echo $(python /opt/help.py apply_latency_ms)
-  rm /tmp/pgdump
+  pycmd='
+import sys
+import json
+
+for line in sys.stdin:
+    if line[0] != "{":
+        continue
+    data = json.loads(line)
+    osd_stats = data["osd_stats"]
+    key = sys.argv[1]
+    res = ""
+    if key != "kb_used":
+        for item in osd_stats:
+            res += ("osd{0}: {1} ".format(item["osd"], item["fs_perf_stat"][key]))
+    else:
+        for item in osd_stats:
+            res += ("osd{0}: {1} ".format(item["osd"], item[key]))
+    print res
+    break
+'
+  ceph pg dump -f json 2>/dev/null | python -c "$pycmd" $1
 }
-
-
-function ceph_commit_latency()
-{
-  $ceph_bin pg dump -f json > /tmp/pgdump 2>/dev/null
-  echo $(python /opt/help.py commit_latency_ms)
-  rm /tmp/pgdump
-}
-
-function ceph_osd_kb_used()
-{
-  $ceph_bin pg dump -f json > /tmp/pgdump 2>/dev/null
-  echo $(python /opt/help.py kb_used)
-  rm /tmp/pgdump
-}
-
 
 # Return the value
 case $1 in
@@ -347,12 +349,12 @@ case $1 in
     echo $rdbps
   ;;
   osd_kbused)
-    ceph_osd_kb_used
+    ceph_pg_dump_stat kb_used
   ;;
   commit)
-    ceph_commit_latency
+    ceph_pg_dump_stat commit_latency_ms
   ;;
   apply)
-    ceph_apply_latency
+    ceph_pg_dump_stat apply_latency_ms
   ;;
 esac
